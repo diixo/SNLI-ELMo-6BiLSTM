@@ -99,8 +99,8 @@ class ElmoEmbeddingLayer(Layer):
         x = tf.squeeze(tf.cast(x, tf.string), axis=1)
         return self.elmo(x)
 
-    # def compute_mask(self, inputs, mask=None):
-    #     return K.not_equal(inputs, '--PAD--')
+    def compute_mask(self, inputs, mask=None):
+        return K.not_equal(inputs, '--PAD--')
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.dimensions)
