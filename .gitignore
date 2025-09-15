@@ -13,4 +13,4 @@ env.bak/
 
 trainer_output/
 
-datasets/snli-1.0/*.csv
+snli*.csv
