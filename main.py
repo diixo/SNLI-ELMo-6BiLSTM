@@ -135,18 +135,21 @@ class NonMasking(Layer):
 
 #### Elmo attempt
 def get_model():
+
     model = Sequential()
     inp1 = Input(shape=(1,), dtype="string", name="sentence1")
     inp2 = Input(shape=(1,), dtype="string", name="sentence2")
     
     def emb_layer(inp, col):
-        x = ElmoEmbeddingLayer()(inp)
+        embd = ElmoEmbeddingLayer()
+        x = embd(inp)
         return x
 
     x = concatenate([
-                    emb_layer(inp1,"sen_1"),
-                    emb_layer(inp2,"sen_2"),
+                    emb_layer(inp1, "sen_1"),
+                    emb_layer(inp2, "sen_2"),
         ])
+
     
     x = NonMasking()(x)
     x = Reshape((1, 1024*2), input_shape=(1024*2,))(x)
@@ -167,7 +170,7 @@ def get_model():
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=0.001),
                   metrics=['accuracy'],
-                 )
+    )
     return model
 
 
