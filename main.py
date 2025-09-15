@@ -3,15 +3,13 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.pipeline import FeatureUnion
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from keras.callbacks import Callback
 import tensorflow_hub as hub
 import tensorflow as tf
 import re
 
 from keras import backend as K
-import keras.layers as layers
+#import keras.layers as layers
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Input, Dropout, Dense, concatenate, Embedding, Flatten, Activation, SpatialDropout1D
@@ -84,33 +82,29 @@ Y_test = to_categorical(le.fit_transform(test["gold_label"].values)).astype("int
 
 class ElmoEmbeddingLayer(Layer):
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.dimensions = 1024
-        self.trainable=True
-        super(ElmoEmbeddingLayer, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        self.elmo = hub.Module(
-            'https://tfhub.dev/google/elmo/2',
+        self.trainable=False
+        self.elmo = hub.KerasLayer(
+            "https://tfhub.dev/google/elmo/3",
             trainable=self.trainable,
-            name="{}_module".format(self.name)
+            name=f"{self.name}_elmo"
         )
 
-        self.trainable_weights += K.tf.trainable_variables(scope="^{}_module/.*".format(self.name))
-        super(ElmoEmbeddingLayer, self).build(input_shape)
+    # def build(self, input_shape):
+    #     self.trainable_weights += K.tf.trainable_variables(scope="^{}_module/.*".format(self.name))
+    #     super(ElmoEmbeddingLayer, self).build(input_shape)
 
-    def call(self, x, mask=None):
-        result = self.elmo(K.squeeze(K.cast(x, tf.string), axis=1),
-                      as_dict=True,
-                      signature='default',
-                      )['default']
-        return result
+    def call(self, x):
+        x = tf.squeeze(tf.cast(x, tf.string), axis=1)
+        return self.elmo(x)
 
-    def compute_mask(self, inputs, mask=None):
-        return K.not_equal(inputs, '--PAD--')
+    # def compute_mask(self, inputs, mask=None):
+    #     return K.not_equal(inputs, '--PAD--')
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.dimensions)
-    
+
 #     def get_config(self):
 #         config = {'output_dim': self.output_dim}
     
@@ -174,8 +168,8 @@ def get_model():
                   optimizer=Adam(lr=0.001),
                   metrics=['accuracy'],
                  )
-
     return model
+
 
 model = get_model()
 
