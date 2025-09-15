@@ -1,0 +1,16 @@
+*.pyc
+*__pycache__/
+
+# Environments
+.env
+.env-django
+.env-server
+.venv
+env/
+venv/
+ENV/
+env.bak/
+
+trainer_output/
+
+datasets/snli-1.0/*.csv
