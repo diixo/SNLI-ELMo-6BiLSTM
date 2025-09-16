@@ -45,12 +45,12 @@ train = pd.read_csv("datasets/snli-1.0/snli_1.0_train.csv")
 test = pd.read_csv("datasets/snli-1.0/snli_1.0_test.csv")
 valid = pd.read_csv("datasets/snli-1.0/snli_1.0_dev.csv")
 
-print("Training loaded on:", train.shape[0], "examples")
-print("Validating loaded on:", test.shape[0], "examples")
-print("Testing loaded on:", valid.shape[0], "examples")
-print(train[:10])
+# print("Training loaded on:", train.shape[0], "examples")
+# print("Validating loaded on:", test.shape[0], "examples")
+# print("Testing loaded on:", valid.shape[0], "examples")
+# print(train[:10])
 
-print(train.isnull().sum())
+#print(train.isnull().sum())
 
 
 train = train.dropna(subset = ['sentence2'])
@@ -58,7 +58,7 @@ train = train[train["gold_label"] != "-"]
 test = test[test["gold_label"] != "-"]
 valid = valid[valid["gold_label"] != "-"]
 
-print(train.nunique())
+#print(train.nunique())
 
 def get_rnn_data(df):
     x = {
@@ -81,33 +81,37 @@ Y_test = to_categorical(le.fit_transform(test["gold_label"].values)).astype("int
 
 
 class ElmoEmbeddingLayer(Layer):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, trainable=False, **kwargs):
+        super(ElmoEmbeddingLayer, self).__init__(**kwargs)
         self.dimensions = 1024
-        self.trainable=False
+        self.trainable = trainable
+
+    def build(self, input_shape):
+        # Загружаем ELMo v3 как KerasLayer
         self.elmo = hub.KerasLayer(
             "https://tfhub.dev/google/elmo/3",
+            #input_shape=[],  # Вход - один токен или предложение
+            dtype=tf.string,
             trainable=self.trainable,
-            name=f"{self.name}_elmo"
+            #name="{}_module".format(self.name)
+            signature="default",
+            output_key="default",  # pooled embedding
         )
+        super(ElmoEmbeddingLayer, self).build(input_shape)
 
-    # def build(self, input_shape):
-    #     self.trainable_weights += K.tf.trainable_variables(scope="^{}_module/.*".format(self.name))
-    #     super(ElmoEmbeddingLayer, self).build(input_shape)
-
-    def call(self, x):
-        x = tf.squeeze(tf.cast(x, tf.string), axis=1)
-        return self.elmo(x)
+    def call(self, x, mask=None):
+        # ELMo v3 ожидает shape (batch_size,) или (batch_size, 1)
+        x_squeezed = tf.squeeze(tf.cast(x, tf.string), axis=-1)
+        return self.elmo(x_squeezed)
 
     def compute_mask(self, inputs, mask=None):
-        return K.not_equal(inputs, '--PAD--')
+        tf.print(">>> compute_mask got:", inputs)
+        return tf.not_equal(inputs, '--PAD--')
 
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], self.dimensions)
+    # def compute_output_shape(self, input_shape):
+    #     return (input_shape[0], self.dimensions)
 
-#     def get_config(self):
-#         config = {'output_dim': self.output_dim}
-    
+
 class NonMasking(Layer):   
     def __init__(self, **kwargs):   
         self.supports_masking = True  
@@ -125,11 +129,6 @@ class NonMasking(Layer):
   
     def get_output_shape_for(self, input_shape):   
         return input_shape
-    
-#     def get_config(self):
-#         config = {'output_dim': self.output_dim}
-        
-#custom_ob={'ElmoEmbeddingLayer': ElmoEmbeddingLayer, 'NonMasking': NonMasking}
 
 ##############################################################################
 
@@ -168,7 +167,7 @@ def get_model():
     
     model = Model(inputs=[inp1,inp2], outputs=outp)
     model.compile(loss='categorical_crossentropy',
-                  optimizer=Adam(lr=0.001),
+                  optimizer=Adam(learning_rate=1e-4),
                   metrics=['accuracy'],
     )
     return model
