@@ -95,14 +95,15 @@ class ElmoEmbeddingLayer(Layer):
             trainable=self.trainable,
             #name="{}_module".format(self.name)
             signature="default",
-            output_key="default",  # pooled embedding
+            output_key="elmo",  # pooled embedding
         )
         super(ElmoEmbeddingLayer, self).build(input_shape)
 
     def call(self, x, mask=None):
         # ELMo v3 ожидает shape (batch_size,) или (batch_size, 1)
         x_squeezed = tf.squeeze(tf.cast(x, tf.string), axis=-1)
-        return self.elmo(x_squeezed)
+        return tf.stop_gradient(self.elmo(x_squeezed))
+        #return self.elmo(x_squeezed)
 
     def compute_mask(self, inputs, mask=None):
         tf.print(">>> compute_mask got:", inputs)
